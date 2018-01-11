@@ -1,3 +1,4 @@
+/*
 package com.github.mnogu.gatling.kafka.test
 
 import io.gatling.core.Predef._
@@ -36,3 +37,4 @@ class ThrottledSimulation extends Simulation {
     .throttle(jumpToRps(10), holdFor(30 seconds))
     .protocols(kafkaConf)
 }
+*/
