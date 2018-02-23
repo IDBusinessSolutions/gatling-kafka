@@ -1,4 +1,3 @@
-/*
 package com.github.mnogu.gatling.kafka.test
 
 import io.gatling.core.Predef._
@@ -29,4 +28,3 @@ class FeederSimulation extends Simulation {
       .inject(constantUsersPerSec(10) during(90 seconds)))
     .protocols(kafkaConf)
 }
-*/
