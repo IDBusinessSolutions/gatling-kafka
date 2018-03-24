@@ -29,8 +29,7 @@ class KafkaRequestActionBuilder[K,V](kafkaAttributes: KafkaAttributes[K,V]) exte
       consumer,
       kafkaAttributes,
       coreComponents,
-      kafkaComponents.kafkaProtocol,
-      kafkaComponents.tracker,
+      kafkaComponents,
       throttled,
       next
     )

@@ -3,7 +3,6 @@ package io.gatling.mnogu.gatling.kafka.action
 import java.util
 import java.util.concurrent.atomic.AtomicBoolean
 
-import akka.actor.ActorRef
 import io.gatling.commons.util.ClockSingleton._
 import io.gatling.commons.validation.Validation
 import io.gatling.core.CoreComponents
@@ -26,11 +25,12 @@ class KafkaRequestAction[K, V](val producer: KafkaProducer[K, V],
                                val consumer: KafkaConsumer[K, V],
                                val kafkaAttributes: KafkaAttributes[K, V],
                                val coreComponents: CoreComponents,
-                               val kafkaProtocol: KafkaProtocol,
-                               val tracker: ActorRef,
+                               val kafkaComponents: KafkaComponents,
                                val throttled: Boolean,
                                val next: Action)
   extends  ExitableAction with NameGen  {
+
+  import kafkaComponents.{kafkaProtocol, tracker}
 
   val statsEngine = coreComponents.statsEngine
   statsEngine.start()
@@ -38,7 +38,6 @@ class KafkaRequestAction[K, V](val producer: KafkaProducer[K, V],
   val messageMatcher = kafkaProtocol.messageMatcher
 
   val BlockingReceiveReturnedNullException = new Exception("Blocking receive returned null. Possibly the consumer was closed.")
-
 
 
   def execute(session: Session): Unit = {
