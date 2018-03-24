@@ -110,8 +110,6 @@ class KafkaRequestAction[K, V](val producer: KafkaProducer[K, V],
   }
 
 
-
-
   private def sendRequest(requestName: String,
                           producer: Producer[K, V],
                           kafkaAttributes: KafkaAttributes[K, V],
@@ -139,19 +137,9 @@ class KafkaRequestAction[K, V](val producer: KafkaProducer[K, V],
       val requestStartDate = nowMillis
 
       producer.send(record, new Callback() {
-
+        //TODO There is a difference between how tests with producers only and producers and consumers should exit
         override def onCompletion(m: RecordMetadata, e: Exception): Unit = {
-
-          val requestEndDate = nowMillis
-
-
- /*       TODO There is a difference between how tests with producers only and producers and consumers should exit
-          if (throttled) {
-            coreComponents.throttler.throttle(session.scenario, () => next ! session)
-          } else {
-            next ! session
-          }*/
-
+          logger.debug(s"Record (message) with ${matchId} has been acknowledged by the server " )
         }
       })
 

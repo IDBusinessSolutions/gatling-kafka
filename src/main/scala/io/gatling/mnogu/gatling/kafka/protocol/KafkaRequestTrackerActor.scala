@@ -95,7 +95,7 @@ class KafkaRequestTrackerActor(statsEngine: StatsEngine, configuration: GatlingC
         case None =>
           // normal path
           sentMessages += messageKey -> messageSent
-          logger.info(s"[Producer] : Storing message with header ID  : $matchId  in sentMessages" )
+          logger.debug(s"[Producer] : Storing message with header ID  : $matchId  in sentMessages" )
 
 
         case Some(MessageReceived(_, _, received, message)) =>
@@ -111,7 +111,7 @@ class KafkaRequestTrackerActor(statsEngine: StatsEngine, configuration: GatlingC
       sentMessages.get(messageKey) match {
         case Some(MessageSent(_, _, sent, checks, session, next, title)) =>
 
-          logger.info(s"[Consumer] : Found message with header ID  : $matchId  in sentMessages" )
+          logger.debug(s"[Consumer] : Found message with header ID  : $matchId  in sentMessages" )
 
           processMessage(session, sent, received, checks, message, next, title)
           sentMessages -= messageKey
