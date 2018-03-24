@@ -22,6 +22,10 @@ import java.util.UUID
  * define trait for message matching logic with separate request/response
  * to see how it can be used check KafkaDefaultMessageMatcher
  */
+
+//TODO Rework how this Matcher Class is used. At the moment messages are correlated using a random matchid kafka header
+//generated in @KafkaRequestAction and not the UUID below. Either the strategies provided by this class should be used
+//or it should be removed
 trait   KakfaMessageMatcher {
   def prepareRequest(msg: KafkaMessage): Unit
   def requestMatchId(msg: KafkaMessage): String
