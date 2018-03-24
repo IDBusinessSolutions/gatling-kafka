@@ -31,10 +31,11 @@ class KafkaRequestAction[K, V](val producer: KafkaProducer[K, V],
   extends  ExitableAction with NameGen  {
 
   import kafkaComponents.{kafkaProtocol, tracker}
+  import kafkaAttributes._
 
   val statsEngine = coreComponents.statsEngine
   statsEngine.start()
-  val name = genName("kafkaRequest")
+  val name = genName("KafkaRequestAction")
   val messageMatcher = kafkaProtocol.messageMatcher
 
   val BlockingReceiveReturnedNullException = new Exception("Blocking receive returned null. Possibly the consumer was closed.")
@@ -54,7 +55,7 @@ class KafkaRequestAction[K, V](val producer: KafkaProducer[K, V],
         )
 
       val startDate = nowMillis
-      tracker ! MessageSent(kafkaProtocol.producerTopic, matchId, startDate, kafkaAttributes.checks, session, next, "Send Kafka Message")
+      tracker ! MessageSent(kafkaProtocol.producerTopic, matchId, startDate, kafkaAttributes.checks, session, next,requestName.apply(session).get)
 
   }
 
