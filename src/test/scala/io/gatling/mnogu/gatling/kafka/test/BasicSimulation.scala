@@ -12,24 +12,27 @@ import scala.concurrent.duration._
 
 class BasicSimulation extends Simulation {
 
-  //localhost:9092
   val host  = Option(System getProperty "host") getOrElse "localhost"
   val port =  Option(System.getProperty("port")) getOrElse 9092
+  val acks =  Option(System.getProperty("acks")) getOrElse "1"
+  val consumergroup =  Option(System.getProperty("consumergroup")) getOrElse "gatling-consumer-group"
+  val producertopic =  Option(System.getProperty("producertopic")) getOrElse "sanitycheck.t"
+  val consumertopic =  Option(System.getProperty("consumertopic")) getOrElse "sanitycheck.t"
 
   val kafkaConf: KafkaProtocol = kafka
-    .producerTopic("sanitycheck.t")
-    .consumerTopic("sanitycheck.t")
+    .producerTopic(producertopic)
+    .consumerTopic(consumertopic)
     .matchByCorrelationID
     .properties(
       Map(
-        ProducerConfig.ACKS_CONFIG -> "1",
+        ProducerConfig.ACKS_CONFIG -> acks,
         ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> s"$host:$port",
         // in most cases, StringSerializer or ByteArraySerializer
         ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG -> "org.apache.kafka.common.serialization.StringSerializer",
         ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG -> "org.apache.kafka.common.serialization.StringSerializer",
         ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG -> "org.apache.kafka.common.serialization.StringDeserializer",
         ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG -> "org.apache.kafka.common.serialization.StringDeserializer",
-        ConsumerConfig.GROUP_ID_CONFIG -> "test-consumer-group"
+        ConsumerConfig.GROUP_ID_CONFIG -> consumergroup
       )
     )
 
