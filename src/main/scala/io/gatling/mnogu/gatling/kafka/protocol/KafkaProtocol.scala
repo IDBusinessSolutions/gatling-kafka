@@ -10,6 +10,7 @@ object KafkaProtocol {
   def apply(configuration: GatlingConfiguration): KafkaProtocol = KafkaProtocol (
     producerTopic = "",
     consumerTopic = "",
+    consumerThreadCount = 4,
     properties = Map(),
     messageMatcher = CorrelationIDMessageMatcher
   )
@@ -33,9 +34,11 @@ case class KafkaProtocol(
   producerTopic: String,
   consumerTopic: String,
   properties: Map[String, Object],
+  consumerThreadCount: Int,
   messageMatcher: KakfaMessageMatcher = CorrelationIDMessageMatcher) extends Protocol {
   def producerTopic(producerTopic: String): KafkaProtocol = copy(producerTopic = producerTopic)
-  def matchByCorrelationID: KafkaProtocol = copy(messageMatcher = messageMatcher)
   def consumerTopic(consumerTopic: String): KafkaProtocol = copy(consumerTopic = consumerTopic)
   def properties(properties: Map[String, Object]): KafkaProtocol = copy(properties = properties)
+  def consumerThreadCount(consumerThreadCount: Int): KafkaProtocol = copy(consumerThreadCount = consumerThreadCount)
+  def matchByCorrelationID: KafkaProtocol = copy(messageMatcher = messageMatcher)
 }

@@ -100,7 +100,7 @@ class KafkaRequestAction[K, V](val producer: KafkaProducer[K, V],
       }
     }
 
-  val listenerThreads = (1 to 4).map(_ => new ListenerThread)
+  val listenerThreads = (1 to kafkaProtocol.consumerThreadCount).map(_ => new ListenerThread)
 
   listenerThreads.foreach(_.start)
 

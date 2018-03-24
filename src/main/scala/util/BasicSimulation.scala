@@ -29,6 +29,7 @@ class BasicSimulation extends Simulation {
     .producerTopic("sanitycheck.t")
     .consumerTopic("sanitycheck.t")
     .matchByCorrelationID
+    .consumerThreadCount(5)
     .properties(
       Map(
         ProducerConfig.ACKS_CONFIG -> "1",
@@ -45,7 +46,7 @@ class BasicSimulation extends Simulation {
   val scn: ScenarioBuilder = scenario("Kafka Test")
     .exec(
       kafka("request")
-        //Creating an anonymouns function taking Gatling session and returning string as body
+        //Creating an anonymous function taking Gatling session and returning string as body
         .send[String, String](StringBody( session => s"""{${randomString(10)}}"""), StringBody( session => s"""{${randomString(100)}}""")))
 
   setUp(
