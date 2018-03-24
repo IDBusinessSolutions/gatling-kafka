@@ -145,11 +145,12 @@ class KafkaRequestAction[K, V](val producer: KafkaProducer[K, V],
           val requestEndDate = nowMillis
 
 
+ /*       TODO There is a difference between how tests with producers only and producers and consumers should exit
           if (throttled) {
             coreComponents.throttler.throttle(session.scenario, () => next ! session)
           } else {
             next ! session
-          }
+          }*/
 
         }
       })
