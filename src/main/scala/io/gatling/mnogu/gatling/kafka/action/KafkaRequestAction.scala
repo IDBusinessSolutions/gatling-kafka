@@ -28,7 +28,7 @@ class KafkaRequestAction[K, V](val producer: KafkaProducer[K, V],
                                val kafkaComponents: KafkaComponents,
                                val throttled: Boolean,
                                val next: Action)
-  extends  ExitableAction with NameGen  {
+  extends ExitableAction with NameGen {
 
   import kafkaComponents.{kafkaProtocol, tracker}
   import kafkaAttributes._
@@ -43,63 +43,63 @@ class KafkaRequestAction[K, V](val producer: KafkaProducer[K, V],
 
   def execute(session: Session): Unit = {
 
-      val matchId : String = randomString(10)
+    val matchId: String = randomString(10)
 
-        sendRequest(
-          kafkaAttributes.requestName.toString(),
-          producer,
-          kafkaAttributes,
-          throttled,
-          session,
-          matchId
-        )
+    sendRequest(
+      kafkaAttributes.requestName.toString(),
+      producer,
+      kafkaAttributes,
+      throttled,
+      session,
+      matchId
+    )
 
-      val startDate = nowMillis
-      tracker ! MessageSent(kafkaProtocol.producerTopic, matchId, startDate, kafkaAttributes.checks, session, next,requestName.apply(session).get)
+    val startDate = nowMillis
+    tracker ! MessageSent(kafkaProtocol.producerTopic, matchId, startDate, kafkaAttributes.checks, session, next, requestName.apply(session).get)
 
   }
 
 
-    class ListenerThread(val continue: AtomicBoolean = new AtomicBoolean(true)) extends Thread(new Runnable {
-      def run(): Unit = {
+  class ListenerThread(val continue: AtomicBoolean = new AtomicBoolean(true)) extends Thread(new Runnable {
+    def run(): Unit = {
 
-        val consumer = new KafkaConsumer[K,V]( kafkaProtocol.properties.asJava )
+      val consumer = new KafkaConsumer[K, V](kafkaProtocol.properties.asJava)
 
-        consumer.subscribe(java.util.Collections.singletonList(kafkaProtocol.consumerTopic))
+      consumer.subscribe(java.util.Collections.singletonList(kafkaProtocol.consumerTopic))
 
-        try {
-          while (continue.get) {
-            val records : ConsumerRecords [K, V] = consumer.poll(1000)
+      try {
+        while (continue.get) {
+          val records: ConsumerRecords[K, V] = consumer.poll(1000)
 
-            for (record <-records.asScala){
-              record match  {
-                case rec: ConsumerRecord [K, V] =>
-                  val headers: Headers = rec.headers()
-                  val matchIdHeader : Header = headers.lastHeader("matchId")
+          for (record <- records.asScala) {
+            record match {
+              case rec: ConsumerRecord[K, V] =>
+                val headers: Headers = rec.headers()
+                val matchIdHeader: Header = headers.lastHeader("matchId")
 
-                  val matchId= new String (matchIdHeader.value(), "UTF-8")
+                val matchId = new String(matchIdHeader.value(), "UTF-8")
 
-                  tracker ! MessageReceived(rec.topic(), matchId, nowMillis, null)
-                case _ =>
-                  tracker ! BlockingReceiveReturnedNull
-                  throw BlockingReceiveReturnedNullException
-              }
+                tracker ! MessageReceived(rec.topic(), matchId, nowMillis, null)
+              case _ =>
+                tracker ! BlockingReceiveReturnedNull
+                throw BlockingReceiveReturnedNullException
             }
           }
-        } catch {
-          // when we close, receive can throw exception
-          case NonFatal(e) => logger.error(e.getMessage)
-        } finally {
-          consumer.close()
         }
-      }
-    }) {
-      def close() = {
-        continue.set(false)
-        interrupt()
-        join(1000)
+      } catch {
+        // when we close, receive can throw exception
+        case NonFatal(e) => logger.error(e.getMessage)
+      } finally {
+        consumer.close()
       }
     }
+  }) {
+    def close() = {
+      continue.set(false)
+      interrupt()
+      join(1000)
+    }
+  }
 
   val listenerThreads = (1 to kafkaProtocol.consumerThreadCount).map(_ => new ListenerThread)
 
@@ -123,14 +123,11 @@ class KafkaRequestAction[K, V](val producer: KafkaProducer[K, V],
       val header: Header = new RecordHeader("matchId", matchId.getBytes("UTF-8"))
       val headers: util.List[Header] = List(header).asJava
 
-      // partition is null so we let kafka decide it
-      // unfortunately no API without partition parameter (downside of Java overloads)
-      val partition: Int = 0
-
       val record = kafkaAttributes.key match {
         case Some(k) =>
-          new ProducerRecord[K, V](kafkaProtocol.producerTopic,partition, k(session).get, payload, headers)
+          new ProducerRecord[K, V](kafkaProtocol.producerTopic, null, k(session).get, payload, headers)
         case None =>
+          //ProducerRecord(topic: String, partition: Integer, timestamp: Long, key: K, value: V, headers: Iterable[Header])
           new ProducerRecord[K, V](kafkaProtocol.producerTopic, payload)
       }
 
@@ -139,7 +136,7 @@ class KafkaRequestAction[K, V](val producer: KafkaProducer[K, V],
       producer.send(record, new Callback() {
         //TODO There is a difference between how tests with producers only and producers and consumers should exit
         override def onCompletion(m: RecordMetadata, e: Exception): Unit = {
-          logger.debug(s"Record (message) with ${matchId} has been acknowledged by the server " )
+          logger.debug(s"Record (message) with ${matchId} has been acknowledged by the server ")
         }
       })
 
