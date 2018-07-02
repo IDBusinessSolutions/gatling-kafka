@@ -45,6 +45,9 @@ class KafkaRequestAction[K, V](val producer: KafkaProducer[K, V],
 
     val matchId: String = randomString(10)
 
+    val startDate = nowMillis
+    tracker ! MessageSent(kafkaProtocol.producerTopic, matchId, startDate, kafkaAttributes.checks, session, next, requestName.apply(session).get)
+
     sendRequest(
       kafkaAttributes.requestName.toString(),
       producer,
@@ -54,8 +57,6 @@ class KafkaRequestAction[K, V](val producer: KafkaProducer[K, V],
       matchId
     )
 
-    val startDate = nowMillis
-    tracker ! MessageSent(kafkaProtocol.producerTopic, matchId, startDate, kafkaAttributes.checks, session, next, requestName.apply(session).get)
 
   }
 
