@@ -11,7 +11,7 @@ import org.apache.kafka.clients.producer.KafkaProducer
 import scala.collection.JavaConverters._
 
 
-class KafkaRequestActionBuilder[K,V](kafkaAttributes: KafkaAttributes[K,V]) extends ActionBuilder {
+class KafkaProducerActionBuilder[K,V](kafkaAttributes: KafkaAttributes[K,V]) extends ActionBuilder {
 
   override def build( ctx: ScenarioContext, next: Action ): Action = {
 
@@ -22,7 +22,7 @@ class KafkaRequestActionBuilder[K,V](kafkaAttributes: KafkaAttributes[K,V]) exte
 
     system.registerOnTermination(producer.close())
 
-    new KafkaRequestAction(
+    new KafkaProducerAction(
       producer,
       kafkaAttributes,
       coreComponents,

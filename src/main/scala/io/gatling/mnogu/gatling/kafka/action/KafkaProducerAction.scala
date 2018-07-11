@@ -13,12 +13,12 @@ import io.gatling.mnogu.gatling.kafka.request.builder.KafkaAttributes
 import org.apache.kafka.clients.producer._
 
 
-class KafkaRequestAction[K, V](val producer: KafkaProducer[K, V],
-                               val kafkaAttributes: KafkaAttributes[K, V],
-                               val coreComponents: CoreComponents,
-                               val kafkaComponents: KafkaComponents,
-                               val throttled: Boolean,
-                               val next: Action)
+class KafkaProducerAction[K, V](val producer: KafkaProducer[K, V],
+                                val kafkaAttributes: KafkaAttributes[K, V],
+                                val coreComponents: CoreComponents,
+                                val kafkaComponents: KafkaComponents,
+                                val throttled: Boolean,
+                                val next: Action)
   extends ExitableAction with NameGen {
 
   import kafkaComponents.{kafkaProtocol, tracker}

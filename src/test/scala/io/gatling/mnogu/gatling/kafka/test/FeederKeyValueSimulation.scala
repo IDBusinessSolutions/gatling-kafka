@@ -30,7 +30,7 @@ class FeederKeyValueSimulation extends Simulation {
     //   ...
     //
     // And each line corresponds to a record sent to Kafka.
-    .exec(kafka("request").send[String, String]("${key}", "${value}"))
+    .exec(kafka("request").produceconsume[String, String]("${key}", "${value}"))
 
   setUp(
     scn

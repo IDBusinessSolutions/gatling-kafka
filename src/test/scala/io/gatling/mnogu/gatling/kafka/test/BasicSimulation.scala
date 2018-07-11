@@ -32,7 +32,8 @@ class BasicSimulation extends Simulation {
         ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG -> "org.apache.kafka.common.serialization.StringSerializer",
         ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG -> "org.apache.kafka.common.serialization.StringDeserializer",
         ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG -> "org.apache.kafka.common.serialization.StringDeserializer",
-        ConsumerConfig.GROUP_ID_CONFIG -> consumergroup
+        ConsumerConfig.GROUP_ID_CONFIG -> consumergroup,
+        ConsumerConfig.AUTO_OFFSET_RESET_CONFIG  -> "latest"
       )
     )
 
@@ -40,7 +41,8 @@ class BasicSimulation extends Simulation {
     .exec(
       kafka("Kafka Request Reply Test")
         //Creating an anonymouns function taking Gatling session and returning string as body
-        .send[String, String](StringBody( session => s"""{${randomString(10)}}"""), StringBody( session => s"""{${randomString(100)}}""")))
+        .produceconsume[String, String](StringBody( session => s"""{${randomString(10)}}"""), StringBody( session => s"""{${randomString(100)}}""")))
+        //.send[String](StringBody( StringBody( session => s"""{${randomString(100)}}"""))))
 
   setUp(
     scn

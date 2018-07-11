@@ -21,17 +21,17 @@ import scala.util.Try
 import scala.util.control.NonFatal
 
 
-class KafkaRequestResponseAction[K, V](val producer: KafkaProducer[K, V],
-                                       val consumer: KafkaConsumer[K, V],
-                                       val kafkaAttributes: KafkaAttributes[K, V],
-                                       val coreComponents: CoreComponents,
-                                       val kafkaComponents: KafkaComponents,
-                                       val throttled: Boolean,
-                                       val next: Action)
+class KafkaProducerConsumerAction[K, V](val producer: KafkaProducer[K, V],
+                                        val consumer: KafkaConsumer[K, V],
+                                        val kafkaAttributes: KafkaAttributes[K, V],
+                                        val coreComponents: CoreComponents,
+                                        val kafkaComponents: KafkaComponents,
+                                        val throttled: Boolean,
+                                        val next: Action)
   extends ExitableAction with NameGen {
 
-  import kafkaComponents.{kafkaProtocol, tracker}
   import kafkaAttributes._
+  import kafkaComponents.{kafkaProtocol, tracker}
 
   val statsEngine = coreComponents.statsEngine
   statsEngine.start()
@@ -43,10 +43,12 @@ class KafkaRequestResponseAction[K, V](val producer: KafkaProducer[K, V],
 
   def execute(session: Session): Unit = {
 
-    val matchId: String = randomString(10)
+
+    val matchId: String = session.userId.toString + kafkaAttributes.testId
+    logger.info(s"Match ID is $matchId")
 
     val startDate = nowMillis
-    tracker ! MessageSent(kafkaProtocol.producerTopic, matchId, startDate, kafkaAttributes.checks, session, next, requestName.apply(session).get)
+    tracker ! MessageSent(kafkaProtocol.producerTopic, matchId, startDate, kafkaAttributes.checks, session, next, requestName)
 
     sendRequest(
       kafkaAttributes.requestName.toString(),
@@ -70,8 +72,7 @@ class KafkaRequestResponseAction[K, V](val producer: KafkaProducer[K, V],
 
       try {
         while (continue.get) {
-          val records: ConsumerRecords[K, V] = consumer.poll(1000)
-
+          val records: ConsumerRecords[K, V] = consumer.poll(kafkaProtocol.consumerPollCount)
           for (record <- records.asScala) {
             record match {
               case rec: ConsumerRecord[K, V] =>
@@ -79,6 +80,8 @@ class KafkaRequestResponseAction[K, V](val producer: KafkaProducer[K, V],
                 val matchIdHeader: Header = headers.lastHeader("matchId")
 
                 val matchId = new String(matchIdHeader.value(), "UTF-8")
+
+                logger.debug(s"Consumed message with matchId : $matchId")
 
                 tracker ! MessageReceived(rec.topic(), matchId, nowMillis, null)
               case _ =>
@@ -128,8 +131,9 @@ class KafkaRequestResponseAction[K, V](val producer: KafkaProducer[K, V],
         case Some(k) =>
           new ProducerRecord[K, V](kafkaProtocol.producerTopic, null, k(session).get, payload, headers)
         case None =>
-          //ProducerRecord(topic: String, partition: Integer, timestamp: Long, key: K, value: V, headers: Iterable[Header])
-          new ProducerRecord[K, V](kafkaProtocol.producerTopic, payload)
+          val record : ProducerRecord[K, V] = new ProducerRecord[K, V](kafkaProtocol.producerTopic, payload)
+          record.headers().add(header)
+          record
       }
 
       val requestStartDate = nowMillis
@@ -137,9 +141,10 @@ class KafkaRequestResponseAction[K, V](val producer: KafkaProducer[K, V],
       producer.send(record, new Callback() {
         //TODO There is a difference between how tests with producers only and producers and consumers should exit
         override def onCompletion(m: RecordMetadata, e: Exception): Unit = {
-          logger.debug(s"Record (message) with ${matchId} has been acknowledged by the server ")
+          logger.debug(s"Record (message) with $matchId has been acknowledged by the server ")
         }
       })
+
 
     }
 
@@ -148,7 +153,4 @@ class KafkaRequestResponseAction[K, V](val producer: KafkaProducer[K, V],
   def logMessage(text: String): Unit = {
     logger.info(text)
   }
-
-  def randomString(l: Int) = scala.util.Random.alphanumeric.take(l).mkString
-
 }

@@ -28,7 +28,7 @@ class ThrottledSimulation extends Simulation {
       exec(
         kafka("request")
           // message to send
-          .send[String]("foo"))
+          .produceconsume[String]("foo"))
     )
 
   setUp(

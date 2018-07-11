@@ -11,6 +11,7 @@ object KafkaProtocol {
     producerTopic = "",
     consumerTopic = "",
     consumerThreadCount = 4,
+    consumerPollCount = 1000,
     properties = Map(),
     messageMatcher = CorrelationIDMessageMatcher
   )
@@ -35,10 +36,12 @@ case class KafkaProtocol(
   consumerTopic: String,
   properties: Map[String, Object],
   consumerThreadCount: Int,
+  consumerPollCount: Int,
   messageMatcher: KakfaMessageMatcher = CorrelationIDMessageMatcher) extends Protocol {
   def producerTopic(producerTopic: String): KafkaProtocol = copy(producerTopic = producerTopic)
   def consumerTopic(consumerTopic: String): KafkaProtocol = copy(consumerTopic = consumerTopic)
   def properties(properties: Map[String, Object]): KafkaProtocol = copy(properties = properties)
   def consumerThreadCount(consumerThreadCount: Int): KafkaProtocol = copy(consumerThreadCount = consumerThreadCount)
+  def consumerPollCount(consumerPollCount: Int): KafkaProtocol = copy(consumerPollCount = consumerPollCount)
   def matchByCorrelationID: KafkaProtocol = copy(messageMatcher = messageMatcher)
 }

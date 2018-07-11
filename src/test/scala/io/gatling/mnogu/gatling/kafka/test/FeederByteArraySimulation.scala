@@ -22,7 +22,7 @@ class FeederByteArraySimulation extends Simulation {
     .feed(csv("test.csv").circular)
     .exec(
       kafka("request")
-        .send(session => session("foo").validate[String].map(s => s.getBytes)))
+        .produceconsume(session => session("foo").validate[String].map(s => s.getBytes)))
 
   setUp(
     scn

@@ -21,7 +21,7 @@ class FeederSimulation extends Simulation {
   val scn = scenario("Kafka Test")
     // You can also use feeder
     .feed(csv("test.csv").circular)
-    .exec(kafka("request").send[String]("${foo}"))
+    .exec(kafka("request").produceconsume[String]("${foo}"))
 
   setUp(
     scn

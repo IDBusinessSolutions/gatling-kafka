@@ -19,7 +19,7 @@ class ByteArraySimulation extends Simulation {
           "org.apache.kafka.common.serialization.ByteArraySerializer"))
 
   val scn = scenario("Kafka Test")
-    .exec(kafka("request").send("foo".getBytes: Array[Byte]))
+    .exec(kafka("request").produceconsume("foo".getBytes: Array[Byte]))
 
   setUp(
     scn
