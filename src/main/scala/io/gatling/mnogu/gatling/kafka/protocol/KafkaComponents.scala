@@ -6,8 +6,8 @@ import io.gatling.core.session.Session
 
 case class KafkaComponents(kafkaProtocol: KafkaProtocol,  tracker : ActorRef) extends ProtocolComponents {
 
-  override def onStart: Option[(Session) => Session] = None
+  override def onStart: Option[Session => Session] = None
 
-  override def onExit: Option[(Session) => Unit] = None
+  override def onExit: Option[Session => Unit] = None
 
 }

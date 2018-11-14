@@ -12,10 +12,7 @@ object KafkaProtocolBuilder {
 }
 
 
-case class KafkaProtocolBuilder(kafkaProtocol: KafkaProtocol, messageMatcher: KakfaMessageMatcher = CorrelationIDMessageMatcher) {
-
-  def matchByCorrelationID: KakfaMessageMatcher = messageMatcher
+case class KafkaProtocolBuilder(kafkaProtocol: KafkaProtocol) {
 
   def build: KafkaProtocol = kafkaProtocol
-
 }

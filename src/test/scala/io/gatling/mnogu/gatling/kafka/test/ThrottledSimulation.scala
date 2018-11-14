@@ -11,7 +11,7 @@ class ThrottledSimulation extends Simulation {
     // Kafka topic name
     .producerTopic("test")
     // Kafka producer configs
-    .properties(
+    .producerProperties(
     Map(
       ProducerConfig.ACKS_CONFIG -> "1",
       // list of Kafka broker hostname and port pairs

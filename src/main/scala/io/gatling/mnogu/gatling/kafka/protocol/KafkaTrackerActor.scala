@@ -1,18 +1,18 @@
 /**
- * Copyright 2011-2017 GatlingCorp (http://gatling.io)
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *  http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+  * Copyright 2011-2017 GatlingCorp (http://gatling.io)
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 package io.gatling.mnogu.gatling.kafka.protocol
 
 import java.lang.{Boolean => JBoolean}
@@ -29,6 +29,7 @@ import io.gatling.core.config.GatlingConfiguration
 import io.gatling.core.session.Session
 import io.gatling.core.stats.StatsEngine
 import io.gatling.core.stats.message.ResponseTimings
+import io.gatling.mnogu.gatling.kafka.check.KafkaCheck
 
 import scala.collection.mutable
 
@@ -37,23 +38,21 @@ import scala.collection.mutable
   * Advise actor a message was sent to Kafka Broker
   */
 case class MessageSent(
-                        producerTopic: String,
-                        matchId:              String,
-                        sent:                 Long,
-                        checks:               List[KafkaCheck],
-                        session:              Session,
-                        next:                 Action,
-                        title:                String
+                        matchId: String,
+                        sent: Long,
+                        checks: List[KafkaCheck],
+                        session: Session,
+                        next: Action,
+                        title: String
                       )
 
 /**
   * Advise actor a response message was received from Kafka Broker
   */
 case class MessageReceived(
-                            consumerTopic: String,
-                            matchId:              String,
-                            received:             Long,
-                            message:              KafkaMessage
+                            matchId: String,
+                            received: Long,
+                            message: KafkaMessage
                           )
 
 /**
@@ -61,8 +60,7 @@ case class MessageReceived(
   */
 case object BlockingReceiveReturnedNull
 
-
-case class MessageKey(replyDestinationName: String, matchId: String)
+case class MessageKey(matchId: String)
 
 object KafkaRequestTrackerActor {
   def props(statsEngine: StatsEngine, configuration: GatlingConfiguration) = Props(new KafkaRequestTrackerActor(statsEngine, configuration))
@@ -70,9 +68,9 @@ object KafkaRequestTrackerActor {
 
 
 /**
- * Bookkeeping actor to correlate request and response Kafka messages
- * Once a message is correlated, it publishes to the Gatling core DataWriter
- */
+  * Bookkeeping actor to correlate request and response Kafka messages
+  * Once a message is correlated, it publishes to the Gatling core DataWriter
+  */
 class KafkaRequestTrackerActor(statsEngine: StatsEngine, configuration: GatlingConfiguration) extends BaseActor {
 
   private val sentMessages = mutable.HashMap.empty[MessageKey, MessageSent]
@@ -88,31 +86,30 @@ class KafkaRequestTrackerActor(statsEngine: StatsEngine, configuration: GatlingC
   def receive = {
 
     // message was sent; add the timestamps to the map
-    case messageSent @ MessageSent(topicName, matchId, sent, checks, session, next, title) =>
+    case messageSent@MessageSent(matchId, sent, checks, session, next, title) =>
       //println(s"sent message ${matchId}")
-      val messageKey = MessageKey(topicName, matchId)
+      val messageKey = MessageKey(matchId)
       receivedMessages.get(messageKey) match {
         case None =>
           // normal path
           sentMessages += messageKey -> messageSent
-          logger.debug(s"[Producer] : Storing message with header ID  : $matchId  in sentMessages" )
+          logger.info(s"[Producer] : Storing message with matchId=$matchId in sentMessages")
 
-
-        case Some(MessageReceived(_, _, received, message)) =>
+        case Some(MessageReceived(_, received, message)) =>
           // message was received out of order, lets just deal with it
           processMessage(session, sent, received, checks, message, next, title)
           receivedMessages -= messageKey
       }
 
-    // message was received; publish to the datawriter and remove from the hashmap
-    case messageReceived @ MessageReceived(topicName, matchId, received, message) =>
-      val messageKey = MessageKey(topicName, matchId)
+    // message was received; publish to the DataWriter and remove from the map
+    case messageReceived@MessageReceived(matchId, received, message) =>
+      val messageKey = MessageKey(matchId)
+      logger.info(s"[Consumer] : Got a message with matchId=$matchId")
 
       sentMessages.get(messageKey) match {
-        case Some(MessageSent(_, _, sent, checks, session, next, title)) =>
-
-          logger.debug(s"[Consumer] : Found message with header ID  : $matchId  in sentMessages" )
-
+        case Some(MessageSent(_, sent, checks, session, next, title)) =>
+          // normal path
+          logger.debug(s"[Consumer] : Found message with matchId=$matchId in sentMessages")
           processMessage(session, sent, received, checks, message, next, title)
           sentMessages -= messageKey
           if (duplicateMessageProtectionEnabled) {
@@ -132,47 +129,47 @@ class KafkaRequestTrackerActor(statsEngine: StatsEngine, configuration: GatlingC
     case BlockingReceiveReturnedNull =>
       //Fail all the sent messages because we do not even have a correlation id
       sentMessages.foreach {
-        case (messageKey, MessageSent(_, _, sent, checks, session, next, title)) =>
+        case (messageKey, MessageSent( _, sent, _, session, next, title)) =>
           executeNext(session, sent, nowMillis, KO, next, title, Some("Blocking received returned null"))
           sentMessages -= messageKey
       }
   }
 
   private def executeNext(
-    session:  Session,
-    sent:     Long,
-    received: Long,
-    status:   Status,
-    next:     Action,
-    title:    String,
-    message:  Option[String] = None
-  ) = {
+                           session: Session,
+                           sent: Long,
+                           received: Long,
+                           status: Status,
+                           next: Action,
+                           title: String,
+                           message: Option[String] = None
+                         ) = {
 
     val timings = ResponseTimings(sent, received)
 
     //TODO I was not able to call session.logGroupResponse from here with the package name as
-    // *com.github*.mnogu.gatling.kafka.protocol, therefore for now I've renamed it to *io.gatling*.mnogu
+    //TODO *com.github*.mnogu.gatling.kafka.protocol, therefore for now I've renamed it to *io.gatling*.mnogu
     statsEngine.logResponse(session, title, timings, status, None, message)
     next ! session.logGroupRequest(timings.responseTime, status).increaseDrift(nowMillis - received)
   }
 
   /**
-   * Processes a matched message
-   */
+    * Processes a matched message
+    */
   private def processMessage(
-                              session:  Session,
-                              sent:     Long,
+                              session: Session,
+                              sent: Long,
                               received: Long,
-                              checks:   List[KafkaCheck],
+                              checks: List[KafkaCheck],
                               message: KafkaMessage,
-                              next:     Action,
-                              title:    String
-  ): Unit = {
+                              next: Action,
+                              title: String
+                            ): Unit = {
     // run all the checks, advise the Gatling API that it is complete and move to next
     val (checkSaveUpdate, error) = Check.check(message, session, checks)
     val newSession = checkSaveUpdate(session)
     error match {
-      case None                        => executeNext(newSession, sent, received, OK, next, title)
+      case None => executeNext(newSession, sent, received, OK, next, title)
       case Some(Failure(errorMessage)) => executeNext(newSession.markAsFailed, sent, received, KO, next, title, Some(errorMessage))
     }
   }

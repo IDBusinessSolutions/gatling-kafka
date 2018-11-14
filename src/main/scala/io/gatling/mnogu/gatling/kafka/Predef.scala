@@ -1,14 +1,14 @@
 package io.gatling.mnogu.gatling.kafka
 
 import io.gatling.core.config.GatlingConfiguration
-import io.gatling.core.session.Expression
+import io.gatling.mnogu.gatling.kafka.check.KafkaCheckSupport
 import io.gatling.mnogu.gatling.kafka.protocol.KafkaProtocolBuilder
-import io.gatling.mnogu.gatling.kafka.request.builder.KafkaTestBuilder
+import io.gatling.mnogu.gatling.kafka.request.builder.Kafka
 
-object Predef {
+object Predef extends KafkaCheckSupport {
 
   def kafka(implicit configuration: GatlingConfiguration) = KafkaProtocolBuilder(configuration)
 
-  def kafka(requestName: String): KafkaTestBuilder = KafkaTestBuilder(requestName)
+  def kafka(requestName: String) = new Kafka(requestName)
 
 }

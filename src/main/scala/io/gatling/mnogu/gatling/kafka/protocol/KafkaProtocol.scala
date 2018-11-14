@@ -7,16 +7,19 @@ import io.gatling.core.protocol.{Protocol, ProtocolKey}
 
 object KafkaProtocol {
 
-  def apply(configuration: GatlingConfiguration): KafkaProtocol = KafkaProtocol (
+  def apply(configuration: GatlingConfiguration): KafkaProtocol = KafkaProtocol(
     producerTopic = "",
-    consumerTopic = "",
+    consumerTopics = List(),
     consumerThreadCount = 4,
     consumerPollCount = 1000,
-    properties = Map(),
-    messageMatcher = CorrelationIDMessageMatcher
+    producerProperties = Map(),
+    consumerProperties = Map()
   )
 
-  val KafkaProtocolKey = new ProtocolKey {
+  val KafkaProtocolKey: ProtocolKey {
+    type Protocol = KafkaProtocol
+    type Components = KafkaComponents
+  } = new ProtocolKey {
 
     type Protocol = KafkaProtocol
     type Components = KafkaComponents
@@ -31,17 +34,23 @@ object KafkaProtocol {
     }
   }
 }
+
 case class KafkaProtocol(
-  producerTopic: String,
-  consumerTopic: String,
-  properties: Map[String, Object],
-  consumerThreadCount: Int,
-  consumerPollCount: Int,
-  messageMatcher: KakfaMessageMatcher = CorrelationIDMessageMatcher) extends Protocol {
+                          producerTopic: String,
+                          consumerTopics: List[String],
+                          producerProperties: Map[String, Object],
+                          consumerProperties: Map[String, Object],
+                          consumerThreadCount: Int,
+                          consumerPollCount: Int) extends Protocol {
   def producerTopic(producerTopic: String): KafkaProtocol = copy(producerTopic = producerTopic)
-  def consumerTopic(consumerTopic: String): KafkaProtocol = copy(consumerTopic = consumerTopic)
-  def properties(properties: Map[String, Object]): KafkaProtocol = copy(properties = properties)
+
+  def consumerTopics(consumerTopics: List[String]): KafkaProtocol = copy(consumerTopics = consumerTopics)
+
+  def producerProperties(properties: Map[String, Object]): KafkaProtocol = copy(producerProperties = properties)
+
+  def consumerProperties(properties: Map[String, Object]): KafkaProtocol = copy(consumerProperties = properties)
+
   def consumerThreadCount(consumerThreadCount: Int): KafkaProtocol = copy(consumerThreadCount = consumerThreadCount)
+
   def consumerPollCount(consumerPollCount: Int): KafkaProtocol = copy(consumerPollCount = consumerPollCount)
-  def matchByCorrelationID: KafkaProtocol = copy(messageMatcher = messageMatcher)
 }

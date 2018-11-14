@@ -26,7 +26,7 @@ class KafkaProducerAction[K, V](val producer: KafkaProducer[K, V],
   val statsEngine = coreComponents.statsEngine
   statsEngine.start()
   val name = genName("KafkaRequestAction")
-  val messageMatcher = kafkaProtocol.messageMatcher
+  val messageMatcher = kafkaAttributes.messageMatcher
 
   val BlockingReceiveReturnedNullException = new Exception("Blocking receive returned null. Possibly the consumer was closed.")
 

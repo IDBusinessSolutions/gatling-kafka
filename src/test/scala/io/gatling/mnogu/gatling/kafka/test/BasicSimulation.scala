@@ -21,15 +21,19 @@ class BasicSimulation extends Simulation {
 
   val kafkaConf: KafkaProtocol = kafka
     .producerTopic(producertopic)
-    .consumerTopic(consumertopic)
-    .matchByCorrelationID
-    .properties(
+    .consumerTopics(List(consumertopic))
+    .producerProperties(
       Map(
         ProducerConfig.ACKS_CONFIG -> acks,
         ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> s"$host:$port",
         // in most cases, StringSerializer or ByteArraySerializer
         ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG -> "org.apache.kafka.common.serialization.StringSerializer",
         ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG -> "org.apache.kafka.common.serialization.StringSerializer",
+      )
+    )
+    .consumerProperties(
+      Map(
+        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> s"$host:$port",
         ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG -> "org.apache.kafka.common.serialization.StringDeserializer",
         ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG -> "org.apache.kafka.common.serialization.StringDeserializer",
         ConsumerConfig.GROUP_ID_CONFIG -> consumergroup,

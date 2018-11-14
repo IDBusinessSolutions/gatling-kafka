@@ -9,7 +9,7 @@ import scala.concurrent.duration._
 class FeederSimulation extends Simulation {
   val kafkaConf = kafka
     .producerTopic("test")
-    .properties(
+    .producerProperties(
       Map(
         ProducerConfig.ACKS_CONFIG -> "1",
         ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> "localhost:9092",

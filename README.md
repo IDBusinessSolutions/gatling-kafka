@@ -3,12 +3,7 @@
 An unofficial [Gatling](http://gatling.io/) 2.3 stress test plugin
 for [Apache Kafka](http://kafka.apache.org/) 1.0 protocol.
 
-This extension now supports Kafka consumers. Kafka messages are correlated between
-what producers send and what consumers consumer by a Kafka header whose
-value is randomly generated uniquely tracking each message.
-
-This plugin supports the Kafka producer API only
-and doesn't support the Kafka consumer API.
+This extension now supports Kafka consumers. Kafka messages are correlated between what producers send and what consumers consume by a custom message matcher, e.g. an implementation based on JSON fields provided.
 
 ## Usage
 
