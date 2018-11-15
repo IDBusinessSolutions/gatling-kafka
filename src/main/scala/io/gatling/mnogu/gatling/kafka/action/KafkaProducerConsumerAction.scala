@@ -15,7 +15,6 @@ import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord, Consum
 import org.apache.kafka.clients.producer._
 
 import scala.collection.JavaConverters._
-import scala.util.Try
 import scala.util.control.NonFatal
 
 
@@ -37,20 +36,19 @@ class KafkaProducerConsumerAction[K, V](val producer: KafkaProducer[K, V],
   val name: String = genName("KafkaProducerConsumerAction")
   val uniqueId: String = UUID.randomUUID().toString
 
+  /** flag to indicate that Kafka consumers started successfully **/
   val listening: AtomicBoolean = new AtomicBoolean(false)
 
   val BlockingReceiveReturnedNullException = new Exception("Blocking receive returned null. Possibly the consumer was closed.")
 
-
+  // the main action method
   override def execute(session: Session): Unit = {
-    logger.info(s"Kafka Consumer listening status: ${listening.get}")
-
     val payload = kafkaAttributes.payload(session).get
     val matchId = messageMatcher.reqMatchId(payload)
 
-    logger.info(s"Match ID is $matchId")
+    logger.debug(s"Payload = $payload, calculated matchId field = $matchId")
     if (matchId.isEmpty)
-      throw new IllegalArgumentException(s"Can't parse matchId field for payload = $payload")
+      throw new IllegalArgumentException(s"Can't parse matchId field for payload $payload")
 
     val startDate = nowMillis
     tracker ! MessageSent(matchId.get, startDate, kafkaAttributes.checks, session, next, requestName)
@@ -64,85 +62,6 @@ class KafkaProducerConsumerAction[K, V](val producer: KafkaProducer[K, V],
       payload,
       matchId.get
     )
-  }
-
-  class ListenerThread(val continue: AtomicBoolean = new AtomicBoolean(true)) extends Thread(() => {
-
-    var consumerProperties = kafkaProtocol.consumerProperties
-    consumerProperties += ConsumerConfig.GROUP_ID_CONFIG -> s"$name-$uniqueId"
-    consumerProperties += ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "latest"
-
-    val consumer = new KafkaConsumer[K, V](consumerProperties.asJava)
-
-    consumer.subscribe(kafkaProtocol.consumerTopics.asJava)
-
-    // call polling to force Kafka consumer group join
-    consumer.poll(0)
-    listening.set(true)
-
-    try {
-      while (continue.get) {
-        val records: ConsumerRecords[K, V] = consumer.poll(kafkaProtocol.consumerPollCount)
-        for (record <- records.asScala) {
-          record match {
-            case rec: ConsumerRecord[K, V] =>
-              try {
-                val matchId = messageMatcher.resMatchId(rec.value())
-                logger.debug(s"Consumed message with matchId : $matchId")
-
-                if (matchId.isEmpty) {
-                  logger.debug(s"The consumed message=$record ignored because can't get matchId")
-                } else {
-                  val kafkaMessage = KafkaMessage(
-                    Option(record.key()).map(_.toString) getOrElse "",
-                    Option(record.value()).map(_.toString) getOrElse "",
-                    record.topic()
-                  )
-                  tracker ! MessageReceived(matchId.get, nowMillis, kafkaMessage)
-                }
-              } catch {
-                // when we close, receive can throw exception
-                case NonFatal(e) => logger.error(s"Error while parsing a consumer record: ${e.getMessage}")
-              }
-            case _ =>
-              tracker ! BlockingReceiveReturnedNull
-              throw BlockingReceiveReturnedNullException
-          }
-        }
-      }
-    } catch {
-      // when we close, receive can throw exception
-      case NonFatal(e) => logger.error(e.getMessage)
-    } finally {
-      consumer.close()
-    }
-  }
-
-  ) {
-
-    def close() = {
-      continue.set(false)
-      interrupt()
-      join(1000)
-    }
-  }
-
-  private val listenerThreads = (1 to kafkaProtocol.consumerThreadCount).map(_ => new ListenerThread)
-
-  listenerThreads.foreach(t => {
-    t.setDaemon(true)
-    t.start()
-  })
-
-  while(!listening.get) {
-    // waiting for Kafka consumers connecting
-    Thread.sleep(100)
-  }
-
-  def postStop(): Unit = {
-    listenerThreads.foreach(thread => Try(thread.close()).recover {
-      case NonFatal(e) => logger.warn("Could not shutdown listener thread", e)
-    })
   }
 
   private def sendRequest(requestName: String,
@@ -165,8 +84,84 @@ class KafkaProducerConsumerAction[K, V](val producer: KafkaProducer[K, V],
       if (e != null) {
         logger.error("Error while sending a message to Kafka", e)
       } else {
-        logger.debug(s"Record (message) with $matchId has been acknowledged by the server ")
+        logger.debug(s"Record (message) with $matchId has been acknowledged by the server")
       }
     })
   }
+
+  class ListenerThread(val continue: AtomicBoolean = new AtomicBoolean(true)) extends Thread(() => {
+
+    var consumerProperties = kafkaProtocol.consumerProperties
+    consumerProperties += ConsumerConfig.GROUP_ID_CONFIG -> s"$name-$uniqueId"
+    consumerProperties += ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "latest"
+
+    val consumer = new KafkaConsumer[K, V](consumerProperties.asJava)
+
+    consumer.subscribe(kafkaProtocol.consumerTopics.asJava)
+
+    // call polling to force Kafka consumer join
+    consumer.poll(0)
+
+    // set Kafka connectivity flag
+    listening.set(true)
+
+    try {
+      while (continue.get) {
+        val records: ConsumerRecords[K, V] = consumer.poll(kafkaProtocol.consumerPollCount)
+        for (record <- records.asScala) {
+          record match {
+            case rec: ConsumerRecord[K, V] =>
+              try {
+                val matchId = messageMatcher.resMatchId(rec.value())
+
+                if (matchId.isDefined) {
+                  val kafkaMessage = KafkaMessage(
+                    Option(record.key()).map(_.toString) getOrElse "",
+                    Option(record.value()).map(_.toString) getOrElse "",
+                    record.topic()
+                  )
+                  tracker ! MessageReceived(matchId.get, nowMillis, kafkaMessage)
+
+                } else {
+                  // can happen if message is not expected
+                  logger.debug(s"The consumed message=$record ignored because can't get matchId")
+                }
+              } catch {
+                // when we close, receive can throw exception
+                case NonFatal(e) => logger.error(s"Error while parsing a consumer record: ${e.getMessage}")
+              }
+            case _ =>
+              tracker ! BlockingReceiveReturnedNull
+              throw BlockingReceiveReturnedNullException
+          }
+        }
+      }
+    } catch {
+      // when we close, receive can throw exception
+      case NonFatal(e) => logger.error(e.getMessage)
+    } finally {
+      consumer.close()
+    }
+  }
+
+  ) {
+    def close(): Unit = {
+      continue.set(false)
+      interrupt()
+      join(1000)
+    }
+  }
+
+  // run Kafka listener threads
+  (1 to kafkaProtocol.consumerThreadCount).map(_ => new ListenerThread).foreach(t => {
+    // use daemon threads to stop when main gatling threads finish
+    t.setDaemon(true)
+    t.start()
+  })
+
+  // waiting until Kafka consumers connected
+  while(!listening.get) {
+    Thread.sleep(100)
+  }
+
 }

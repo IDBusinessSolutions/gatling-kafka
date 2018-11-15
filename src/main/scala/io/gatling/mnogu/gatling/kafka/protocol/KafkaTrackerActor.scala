@@ -60,12 +60,15 @@ case class MessageReceived(
   */
 case object BlockingReceiveReturnedNull
 
+/**
+  * Case class to represent a unique Kafka message key.
+  * @param matchId message matchId value
+  */
 case class MessageKey(matchId: String)
 
 object KafkaRequestTrackerActor {
   def props(statsEngine: StatsEngine, configuration: GatlingConfiguration) = Props(new KafkaRequestTrackerActor(statsEngine, configuration))
 }
-
 
 /**
   * Bookkeeping actor to correlate request and response Kafka messages
@@ -83,17 +86,16 @@ class KafkaRequestTrackerActor(statsEngine: StatsEngine, configuration: GatlingC
       JCollections.emptyMap()
 
   // Actor receive loop
-  def receive = {
+  override def receive: PartialFunction[Any, Unit] = {
 
     // message was sent; add the timestamps to the map
     case messageSent@MessageSent(matchId, sent, checks, session, next, title) =>
-      //println(s"sent message ${matchId}")
       val messageKey = MessageKey(matchId)
       receivedMessages.get(messageKey) match {
         case None =>
           // normal path
           sentMessages += messageKey -> messageSent
-          logger.info(s"[Producer] : Storing message with matchId=$matchId in sentMessages")
+          logger.debug(s"[Producer] : saving message with matchId=$matchId in sent messages cache")
 
         case Some(MessageReceived(_, received, message)) =>
           // message was received out of order, lets just deal with it
@@ -104,12 +106,12 @@ class KafkaRequestTrackerActor(statsEngine: StatsEngine, configuration: GatlingC
     // message was received; publish to the DataWriter and remove from the map
     case messageReceived@MessageReceived(matchId, received, message) =>
       val messageKey = MessageKey(matchId)
-      logger.info(s"[Consumer] : Got a message with matchId=$matchId")
+      logger.debug(s"[Consumer] : received a message with matchId=$matchId")
 
       sentMessages.get(messageKey) match {
         case Some(MessageSent(_, sent, checks, session, next, title)) =>
           // normal path
-          logger.debug(s"[Consumer] : Found message with matchId=$matchId in sentMessages")
+          logger.debug(s"[Consumer] : found message with matchId=$matchId in sent messages cache")
           processMessage(session, sent, received, checks, message, next, title)
           sentMessages -= messageKey
           if (duplicateMessageProtectionEnabled) {
@@ -117,7 +119,6 @@ class KafkaRequestTrackerActor(statsEngine: StatsEngine, configuration: GatlingC
           }
 
         case None =>
-
           if (!acknowledgedMessagesHistory.containsValue(messageKey)) {
             // failed to find message; early receive? or bad return correlation id?
             // let's add it to the received messages buffer just in case
@@ -129,28 +130,10 @@ class KafkaRequestTrackerActor(statsEngine: StatsEngine, configuration: GatlingC
     case BlockingReceiveReturnedNull =>
       //Fail all the sent messages because we do not even have a correlation id
       sentMessages.foreach {
-        case (messageKey, MessageSent( _, sent, _, session, next, title)) =>
+        case (messageKey, MessageSent(_, sent, _, session, next, title)) =>
           executeNext(session, sent, nowMillis, KO, next, title, Some("Blocking received returned null"))
           sentMessages -= messageKey
       }
-  }
-
-  private def executeNext(
-                           session: Session,
-                           sent: Long,
-                           received: Long,
-                           status: Status,
-                           next: Action,
-                           title: String,
-                           message: Option[String] = None
-                         ) = {
-
-    val timings = ResponseTimings(sent, received)
-
-    //TODO I was not able to call session.logGroupResponse from here with the package name as
-    //TODO *com.github*.mnogu.gatling.kafka.protocol, therefore for now I've renamed it to *io.gatling*.mnogu
-    statsEngine.logResponse(session, title, timings, status, None, message)
-    next ! session.logGroupRequest(timings.responseTime, status).increaseDrift(nowMillis - received)
   }
 
   /**
@@ -172,5 +155,21 @@ class KafkaRequestTrackerActor(statsEngine: StatsEngine, configuration: GatlingC
       case None => executeNext(newSession, sent, received, OK, next, title)
       case Some(Failure(errorMessage)) => executeNext(newSession.markAsFailed, sent, received, KO, next, title, Some(errorMessage))
     }
+  }
+
+  private def executeNext(
+                           session: Session,
+                           sent: Long,
+                           received: Long,
+                           status: Status,
+                           next: Action,
+                           title: String,
+                           message: Option[String] = None
+                         ): Unit = {
+
+    val timings = ResponseTimings(sent, received)
+
+    statsEngine.logResponse(session, title, timings, status, None, message)
+    next ! session.logGroupRequest(timings.responseTime, status).increaseDrift(nowMillis - received)
   }
 }

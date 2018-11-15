@@ -3,7 +3,14 @@
 An unofficial [Gatling](http://gatling.io/) 2.3 stress test plugin
 for [Apache Kafka](http://kafka.apache.org/) 1.0 protocol.
 
-This extension now supports Kafka consumers. Kafka messages are correlated between what producers send and what consumers consume by a custom message matcher, e.g. an implementation based on JSON fields provided.
+This extension now supports Kafka consumers. Kafka messages are correlated between what producers send and 
+what consumers consume by a custom message matcher (implementation based on matching JSON fields provided).
+
+**Current restrictions:**
+- String messages only supported in consumer
+- `produce` and `produceconsume` actions supported, no distinct `consume` action
+- Kafka producer supports one topic
+- Consumed message topic check only supported (additional checks can be added on demand)
 
 ## Usage
 

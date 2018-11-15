@@ -73,3 +73,4 @@ project/plugins/project/
 .settings/*
 
 
+/src/test/scala/io/gatling/mnogu/gatling/kafka/test/PlatformEventsSimulation.scala
