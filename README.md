@@ -6,11 +6,29 @@ for [Apache Kafka](http://kafka.apache.org/) 1.0 protocol.
 This extension now supports Kafka consumers. Kafka messages are correlated between what producers send and 
 what consumers consume by a custom message matcher (implementation based on matching JSON fields provided).
 
-**Current restrictions:**
+#### Current restrictions
 - String messages only supported in consumer
 - `produce` and `produceconsume` actions supported, no distinct `consume` action
 - Kafka producer supports one topic
 - Consumed message topic check only supported (additional checks can be added on demand)
+
+#### Assembly and publish to Nexus
+
+To assembly artifact and publish it to Nexus maven repository execute the command:
+    
+    $ sbt clean assembly publish 
+
+It requires the configured `.credentials` file in `%USER_HOME%/.sbt/` folder with a format:
+    
+    realm=Sonatype Nexus Repository Manager
+    host=%NEXUS_HOST%
+    user=%ADMIN_USERNAME%
+    password=%ADMIN_PASSWORD%
+
+
+=============================================================
+
+# INHERITED PART
 
 ## Usage
 

@@ -44,9 +44,12 @@ class BasicSimulation extends Simulation {
   val scn: ScenarioBuilder = scenario("Kafka Test")
     .exec(
       kafka("Kafka Request Reply Test")
-        //Creating an anonymouns function taking Gatling session and returning string as body
-        .produceconsume[String, String](StringBody( session => s"""{${randomString(10)}}"""), StringBody( session => s"""{${randomString(100)}}""")))
-        //.send[String](StringBody( StringBody( session => s"""{${randomString(100)}}"""))))
+        // Creating an anonymous function taking Gatling session and returning string as body
+        .produceconsume[String, String](StringBody( session => s"""{${randomString(10)}}"""), StringBody( session => s"""{${randomString(100)}}"""))
+        .check(
+          topic.is(consumertopic)
+        )
+    )
 
   setUp(
     scn
