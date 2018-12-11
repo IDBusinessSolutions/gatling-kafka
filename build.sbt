@@ -6,10 +6,12 @@ organization := "com.github.mnogu"
 version := "0.1.3"
 scalaVersion := "2.12.3"
 
+val gatlingVersion = "3.0.1.1"
+
 libraryDependencies ++= Seq(
-  "io.gatling" % "gatling-test-framework" % "2.3.0" % "test",
-  "io.gatling.highcharts" % "gatling-charts-highcharts" % "2.3.0",
-  "io.gatling" % "gatling-core" % "2.3.0",
+  "io.gatling" % "gatling-test-framework" % gatlingVersion % "test",
+  "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingVersion,
+  "io.gatling" % "gatling-core" % gatlingVersion,
   ("org.apache.kafka" % "kafka-clients" % "1.0.0")
   // Gatling contains slf4j-api
   .exclude("org.slf4j", "slf4j-api")
